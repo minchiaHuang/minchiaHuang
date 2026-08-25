@@ -1,0 +1,77 @@
+name: Update profile stats
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-profile-stats
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out profile repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate light GitHub stats
+        uses: stats-organization/github-readme-stats-action@e856fc8de9d7729b463c468911e232cfbdc3d55e # v2.0.2
+        with:
+          card: stats
+          options: >-
+            username=${{ github.repository_owner }}&show_icons=true&hide_rank=true&include_all_commits=true&custom_title=Public%20GitHub%20stats&bg_color=ffffff&title_color=0969da&text_color=1f2328&icon_color=0969da&border_color=d0d7de
+          path: assets/generated/github-stats-light.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          core_version: 2.1.5
+          fail_on_error: true
+
+      - name: Generate dark GitHub stats
+        uses: stats-organization/github-readme-stats-action@e856fc8de9d7729b463c468911e232cfbdc3d55e # v2.0.2
+        with:
+          card: stats
+          options: >-
+            username=${{ github.repository_owner }}&show_icons=true&hide_rank=true&include_all_commits=true&custom_title=Public%20GitHub%20stats&bg_color=0d1117&title_color=58a6ff&text_color=c9d1d9&icon_color=58a6ff&border_color=30363d
+          path: assets/generated/github-stats-dark.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          core_version: 2.1.5
+          fail_on_error: true
+
+      - name: Generate light contribution streak
+        uses: DenverCoder1/github-readme-streak-stats@51cfb8879073b4c016ce6286016de0b14d179077 # v1.7.0
+        with:
+          options: >-
+            user=${{ github.repository_owner }}&background=ffffff&border=d0d7de&stroke=d0d7de&ring=0969da&fire=0969da&currStreakNum=1f2328&sideNums=1f2328&currStreakLabel=57606a&sideLabels=57606a&dates=57606a&disable_animations=true&timezone=Australia%2FSydney
+          path: assets/generated/github-streak-light.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate dark contribution streak
+        uses: DenverCoder1/github-readme-streak-stats@51cfb8879073b4c016ce6286016de0b14d179077 # v1.7.0
+        with:
+          options: >-
+            user=${{ github.repository_owner }}&background=0d1117&border=30363d&stroke=30363d&ring=58a6ff&fire=58a6ff&currStreakNum=c9d1d9&sideNums=c9d1d9&currStreakLabel=8b949e&sideLabels=8b949e&dates=8b949e&disable_animations=true&timezone=Australia%2FSydney
+          path: assets/generated/github-streak-dark.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize generated SVGs
+        run: perl -pi -e 's/[ \t]+$//' assets/generated/*.svg
+
+      - name: Commit updated cards
+        run: |
+          if git diff --quiet -- assets/generated; then
+            echo "Profile cards are already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/generated
+          git commit -m "chore(profile): update generated stats"
+          git push
